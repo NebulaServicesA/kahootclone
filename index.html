@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Kahoot Clone</title>
+    <style>
+        /* Same styling as before */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f7f7f7;
+        }
+
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 400px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 80%;
+        }
+
+        button {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+        }
+
+        .question-container {
+            display: none;
+        }
+
+        .question {
+            margin: 20px 0;
+        }
+
+        .answer-button {
+            background-color: #008CBA;
+            color: white;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .answer-button:hover {
+            background-color: #006F8C;
+        }
+
+        #join-game-container {
+            display: none;
+        }
+
+        #game-started {
+            display: none;
+        }
+
+        .leaderboard {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="main-menu">
+        <h1>Simple Kahoot</h1>
+        <button id="create-game-btn">Create Game</button>
+        <button id="join-game-btn">Join Game</button>
+    </div>
+
+    <!-- Create Game Section -->
+    <div class="container" id="create-game-container" style="display:none;">
+        <h2>Create a Game</h2>
+        <p>Join Code: <span id="join-code"></span></p>
+        <button id="start-game-btn" disabled>Start Game</button>
+        <button id="back-to-main">Back</button>
+    </div>
+
+    <!-- Join Game Section -->
+    <div class="container" id="join-game-container">
+        <h2>Join Game</h2>
+        <input type="text" id="join-code-input" placeholder="Enter Join Code">
+        <input type="text" id="username" placeholder="Enter Username">
+        <button id="join-game-submit">Join</button>
+        <button id="back-to-main-from-join">Back</button>
+    </div>
+
+    <!-- Game Section -->
+    <div class="container" id="game-container">
+        <h2 id="game-title">Welcome to the Game!</h2>
+        <div id="question-container" class="question-container">
+            <div id="question-text" class="question"></div>
+            <button class="answer-button" id="answer-1"></button>
+            <button class="answer-button" id="answer-2"></button>
+            <button class="answer-button" id="answer-3"></button>
+            <button class="answer-button" id="answer-4"></button>
+        </div>
+        <div id="game-started">
+            <h3>The Game Has Started!</h3>
+        </div>
+        <div class="leaderboard">
+            <h4>Leaderboard</h4>
+            <ul id="leaderboard-list"></ul>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script>
+        // Initialize Supabase client
+        const supabase = createClient('https://pvpgtscbatitepwjycrg.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cGd0c2NiYXRpdGVwd2p5Y3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzcxNjc0ODcsImV4cCI6MjA1Mjc0MzQ4N30.F3lcImuneANEjR00TFHFw45ZOa_dL2ZrEUqp77JQnV4');
+
+        // Elements
+        const mainMenu = document.getElementById('main-menu');
+        const createGameContainer = document.getElementById('create-game-container');
+        const joinGameContainer = document.getElementById('join-game-container');
+        const gameContainer = document.getElementById('game-container');
+        const backToMain = document.getElementById('back-to-main');
+        const backToMainFromJoin = document.getElementById('back-to-main-from-join');
+        const createGameBtn = document.getElementById('create-game-btn');
+        const joinGameBtn = document.getElementById('join-game-btn');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const joinGameSubmit = document.getElementById('join-game-submit');
+        const usernameInput = document.getElementById('username');
+        const joinCodeInput = document.getElementById('join-code-input');
+        const questionText = document.getElementById('question-text');
+        const answerButtons = [document.getElementById('answer-1'), document.getElementById('answer-2'), document.getElementById('answer-3'), document.getElementById('answer-4')];
+        const leaderboardList = document.getElementById('leaderboard-list');
+        const gameStartedDiv = document.getElementById('game-started');
+        let currentPlayer = null;
+        let gameStarted = false;
+        let currentGameCode = null;
+
+        // Switch Views
+        function switchToView(view) {
+            mainMenu.style.display = 'none';
+            createGameContainer.style.display = 'none';
+            joinGameContainer.style.display = 'none';
+            gameContainer.style.display = 'none';
+            gameStartedDiv.style.display = 'none';
+            if (view === 'main') mainMenu.style.display = 'block';
+            if (view === 'create-game') createGameContainer.style.display = 'block';
+            if (view === 'join-game') joinGameContainer.style.display = 'block';
+            if (view === 'game') gameContainer.style.display = 'block';
+        }
+
+        // Generate a random game code
+        function generateJoinCode() {
+            return Math.random().toString(36).substr(2, 6).toUpperCase(); // Generate a 6-character alphanumeric code
+        }
+
+        // Start Game Logic
+        function startGame() {
+            gameStarted = true;
+            // Update game status in Supabase
+            supabase
+                .from('stuff')
+                .update({ status: true })
+                .eq('game_id', currentGameCode)
+                .then(() => {
+                    switchToView('game');
+                    displayQuestion(0); // Start with the first question
+                });
+        }
+
+        function displayQuestion(questionIndex) {
+            if (questionIndex < questions.length) {
+                const question = questions[questionIndex];
+                questionText.textContent = question.question;
+                answerButtons.forEach((button, i) => {
+                    button.textContent = question.answers[i];
+                    button.onclick = () => checkAnswer(questionIndex, i);
+                });
+            } else {
+                gameStartedDiv.style.display = 'block';
+            }
+        }
+
+        function checkAnswer(questionIndex, selectedAnswerIndex) {
+            const correctAnswer = questions[questionIndex].correct;
+            if (selectedAnswerIndex === correctAnswer) {
+                alert("Correct!");
+            } else {
+                alert("Wrong answer!");
+            }
+            // Move to the next question
+            displayQuestion(questionIndex + 1);
+        }
+
+        // Event Listeners
+        createGameBtn.addEventListener('click', () => {
+            // Generate the join code when creating a game
+            currentGameCode = generateJoinCode();
+            document.getElementById('join-code').textContent = currentGameCode;
+            
+            // Insert game in the database
+            supabase
+                .from('stuff')
+                .insert([{ game_id: currentGameCode, player_name: 'Host', status: false }])
+                .then(() => {
+                    switchToView('create-game');
+                });
+        });
+
+        joinGameBtn.addEventListener('click', () => {
+            switchToView('join-game');
+        });
+
+        startGameBtn.addEventListener('click', startGame);
+
+        backToMain.addEventListener('click', () => {
+            switchToView('main');
+        });
+
+        backToMainFromJoin.addEventListener('click', () => {
+            switchToView('main');
+        });
+
+        joinGameSubmit.addEventListener('click', () => {
+            const joinCode = joinCodeInput.value.trim();
+            const username = usernameInput.value.trim();
+            if (joinCode && username) {
+                // Check if the game code exists in Supabase
+                supabase
+                    .from('stuff')
+                    .select('*')
+                    .eq('game_id', joinCode)
+                    .then(({ data, error }) => {
+                        if (data && data.length > 0) {
+                            // Add player to the game
+                            supabase
+                                .from('stuff')
+                                .insert([{ game_id: joinCode, player_name: username, status: false }])
+                                .then(() => {
+                                    currentPlayer = { username };
+                                    alert(`Welcome ${username}! You joined the game with code ${joinCode}.`);
+                                    leaderboardList.innerHTML = `<li>${currentPlayer.username} - Joined the game</li>`;
+                                    switchToView('game');
+                                });
+                        } else {
+                            alert("Invalid join code. Please try again.");
+                        }
+                    });
+            } else {
+                alert("Please enter both join code and username.");
+            }
+        });
+    </script>
+
+</body>
+</html>
