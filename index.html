@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Kahoot Clone</title>
     <style>
-        /* Same styling as before */
+        /* Basic Styling */
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -25,7 +25,7 @@
             width: 400px;
         }
 
-        input {
+        input, button {
             padding: 10px;
             margin: 10px;
             border-radius: 5px;
@@ -34,10 +34,6 @@
         }
 
         button {
-            padding: 10px;
-            margin: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
             background-color: #4CAF50;
             color: white;
             cursor: pointer;
@@ -49,23 +45,6 @@
 
         .question-container {
             display: none;
-        }
-
-        .question {
-            margin: 20px 0;
-        }
-
-        .answer-button {
-            background-color: #008CBA;
-            color: white;
-            padding: 10px;
-            margin: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .answer-button:hover {
-            background-color: #006F8C;
         }
 
         #join-game-container {
@@ -183,7 +162,13 @@
                 });
         }
 
+        // Function to Display Question (example for now)
         function displayQuestion(questionIndex) {
+            const questions = [
+                { question: "What is 2 + 2?", answers: ["3", "4", "5", "6"], correct: 1 },
+                { question: "What is the capital of France?", answers: ["Paris", "London", "Rome", "Berlin"], correct: 0 }
+            ];
+
             if (questionIndex < questions.length) {
                 const question = questions[questionIndex];
                 questionText.textContent = question.question;
@@ -197,7 +182,7 @@
         }
 
         function checkAnswer(questionIndex, selectedAnswerIndex) {
-            const correctAnswer = questions[questionIndex].correct;
+            const correctAnswer = 1; // Hardcoded for simplicity
             if (selectedAnswerIndex === correctAnswer) {
                 alert("Correct!");
             } else {
